@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <style>
+        body { padding: 30px 0; }
+        fieldset { margin-top: 20px; }
+        p { margin: 3px 0; }
+        #logs { background: #000; color: #fff; font-family: 'Courier New'; margin-top: 20px; }
+        #actions { font-family: 'Courier New'; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <fieldset>
+                    <legend>1) Subscribe topic</legend>
+                    <div class="form-group">
+                        <input type="text" id="subscribe-topic-name" value="default" class="form-control">
+                    </div>
+                    <button id="subscribe-topic" class="btn btn-success">Subscribe topic</button>
+                    <button id="unsubscribe-topic" class="btn btn-danger">Unsubscribe topic</button>
+                </fieldset>
+                <fieldset>
+                    <legend>2) Publish message to topic</legend>
+                    <div class="form-group">
+                        <input type="text" id="publish-topic" value="default" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <textarea id="publish-message" placeholder="Fill message..." class="form-control"></textarea>
+                    </div>
+                    <button id="publish-text" class="btn btn-success">Publish text</button>
+                </fieldset>
+            </div>
+            <div class="col-md-8">
+                <h3>Action log:</h3>
+                <div id="actions" class="well"></div>
+                
+                <h3>Data from subscribed topics:</h3>
+                <div id="logs" class="well"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+    <script src="http://autobahn.s3.amazonaws.com/js/autobahn.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            function action(message) {
+                $('#actions').append($('</p>').html(message));
+            }
+            
+            function log(message) {
+                $('#logs').append($('</p>').html(message));
+            }
+            
+            function onFailed() {
+                action('Connecting to the websocket server failed!');
+            }
+            
+            function onConnected() {      
+                action('Connected to websocket server');
+                
+                $('#publish-text').click(function() {
+                    var topic = $('#publish-topic').val();
+                    var message = $('#publish-message').val() || 'Current date: ' + Date.now();
+                    
+                    ws.publish(topic, message);
+                    action('Send to topic: "' + topic + '", message: "' + message + '"');
+                });
+                
+                $('#subscribe-topic').click(function() {
+                    var newTopic = $('#subscribe-topic-name').val();
+                    if (newTopic) {
+                        action('Subscribe topic: ' + newTopic);
+                        ws.subscribe(newTopic, function (topic, data) {
+                            log('Topic: ' + topic);
+                            log('> ' + data);
+                        });
+                    }
+                });
+                
+                $('#unsubscribe-topic').click(function() {
+                    var topic = $('#subscribe-topic-name').val();
+                    try {
+                        ws.unsubscribe(topic);
+                        action('Unsubscribe topic: ' + topic);
+                    } catch (err) {
+                        action('Can\'t unsubscribe topic: ' + topic);
+                    }
+                });
+            }
+
+            var ws = new ab.Session('ws://localhost:9000/', onConnected, onFailed, {'skipSubprotocolCheck': true});
+        });
+    </script>
+</body>
+</html>
